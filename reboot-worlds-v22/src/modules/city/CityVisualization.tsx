@@ -448,7 +448,7 @@ const STATUS_CONFIG: Record<ProjectStatus, { label: string; color: string; bg: s
   abandoned: { label: 'Abandoned', color: '#FF5959', bg: 'rgba(255,89,89,0.1)' },
 }
 
-function ProjectDetail({ project, onClose }: { project: CityProject; onClose: () => void }) {
+export function ProjectDetail({ project, onClose, canCustomize = true }: { canCustomize?: boolean; project: import('@/types/project').Project; onClose: () => void }) {
   const district = DISTRICT_MAP[project.category]
   const theme = CATEGORY_THEME[project.category]
   const setMode = useUI((s) => s.setMode)
@@ -474,7 +474,7 @@ function ProjectDetail({ project, onClose }: { project: CityProject; onClose: ()
             <h3 className="text-lg font-medium text-text">{project.name}</h3>
             <p className="text-xs text-text-secondary mt-1">{project.tagline}</p>
           </div>
-          <button onClick={onClose} className="text-text-secondary hover:text-text transition-colors text-sm shrink-0 ml-sm">✕</button>
+          <button onClick={onClose} aria-label="Close project details" className="text-text-secondary hover:text-text transition-colors text-sm shrink-0 ml-sm">✕</button>
         </div>
         <div className="mb-md">
           <div className="flex items-center justify-between mb-1">
@@ -521,9 +521,9 @@ function ProjectDetail({ project, onClose }: { project: CityProject; onClose: ()
           <span>by {project.founder}</span>
         </div>
         <div className="mt-lg flex gap-sm">
-          <button onClick={() => startCustomizing(project.id)} className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-border/60 bg-card/60 text-text hover:border-primary/40 hover:bg-primary/5 transition-all duration-300 flex items-center justify-center gap-2">
+          {canCustomize && <button onClick={() => startCustomizing(project.id)} className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-border/60 bg-card/60 text-text hover:border-primary/40 hover:bg-primary/5 transition-all duration-300 flex items-center justify-center gap-2">
             <Sliders size={14} /> Customize
-          </button>
+          </button>}
           <button onClick={() => setMode('echo')} className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition-all duration-300 flex items-center justify-center gap-2">
             <Sparkles size={14} /> Echo
           </button>
@@ -553,7 +553,7 @@ function MomentumBar({ value, color }: { value: number; color: string }) {
 
 // ---- Stats overlay ------------------------------------------------------ //
 
-function CityStatsOverlay({ projects }: { projects: CityProject[] }) {
+export function CityStatsOverlay({ projects }: { projects: import('@/types/project').Project[] }) {
   const alive = projects.filter((p) => p.status === 'alive').length
   const reviving = projects.filter((p) => p.status === 'reviving').length
   const abandoned = projects.filter((p) => p.status === 'abandoned').length
@@ -843,4 +843,32 @@ export function CityVisualization({ projects }: { projects: CityProject[] }) {
       )}
     </div>
   )
+}
+
+/** The original planet, shared by the continuous city canvas. */
+export function WorldHub({ projects }: { projects: CityProject[] }) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const selectedProjectId = useUI(s => s.selectedProjectId)
+  const onSelect = (id: string) => { if (useUI.getState().travelPhase === 'idle') useUI.getState().selectProject(id) }
+  return <group>
+          <PlanetStars count={1000} />
+          <PlanetBody />
+          <RebootMonument />
+          <BiomesLayer projects={projects} />
+          <LifeParticles projects={projects} />
+          <ConstructionDrones projects={projects} />
+          <WorldLife projects={projects} />
+          <CityGlow projects={projects} />
+          <DistrictMarkers projects={projects} />
+          {projects.map((p) => (
+            <SurrealBuilding
+              key={p.id}
+              project={p}
+              hovered={hoveredId === p.id}
+              selected={selectedProjectId === p.id}
+              onHover={setHoveredId}
+              onSelect={onSelect}
+            />
+          ))}
+  </group>
 }

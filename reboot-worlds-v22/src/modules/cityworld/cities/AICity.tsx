@@ -5,6 +5,9 @@ import * as THREE from 'three'
 import type { Project } from '@/types/project'
 import type { CitySceneProps } from '../CityWorldModule'
 
+import { FillerSkyline as SharedSkyline } from './cityKit'
+import { CITIES } from '../cityRegistry'
+
 const ACCENT = '#3DD8FF'
 
 function seeded(key: string, salt = 0): number {
@@ -50,12 +53,13 @@ function HoloTower({
   useFrame((_, delta) => {
     if (!group.current) return
     const target = hovered || selected ? 1.06 : 1
-    group.current.scale.lerp(new THREE.Vector3(target, target, target), delta * 6)
+    group.current.scale.setScalar(THREE.MathUtils.damp(group.current.scale.x, target, 6, delta))
   })
   const glow = selected ? 1.1 : hovered ? 0.85 : 0.45
   return (
     <group
       ref={group}
+      userData={{projectId: project.id}}
       position={dna.pos}
       onClick={(e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation()
@@ -121,6 +125,7 @@ function NeuralLinks({ points }: { points: THREE.Vector3[] }) {
     g.setAttribute('position', new THREE.BufferAttribute(arr, 3))
     return g
   }, [points])
+  useEffect(() => () => geo.dispose(), [geo])
   useFrame((state) => {
     if (mat.current) mat.current.opacity = 0.16 + Math.abs(Math.sin(state.clock.elapsedTime * 1.6)) * 0.2
   })
@@ -161,32 +166,6 @@ function AiCore() {
       </mesh>
       <pointLight position={[0, 24, 0]} intensity={3} distance={90} color={ACCENT} />
     </group>
-  )
-}
-
-function FillerSkyline() {
-  const ref = useRef<THREE.InstancedMesh>(null)
-  useEffect(() => {
-    const m = ref.current
-    if (!m) return
-    const d = new THREE.Object3D()
-    for (let i = 0; i < 70; i++) {
-      const a = seeded(`fs${i}`, 1) * Math.PI * 2
-      const rad = 30 + seeded(`fs${i}`, 2) * 42
-      const h = 3 + seeded(`fs${i}`, 3) * 10
-      d.position.set(Math.cos(a) * rad, h / 2, Math.sin(a) * rad)
-      d.scale.set(1.6 + seeded(`fs${i}`, 4) * 1.6, h, 1.6 + seeded(`fs${i}`, 4) * 1.6)
-      d.rotation.set(0, seeded(`fs${i}`, 5) * Math.PI, 0)
-      d.updateMatrix()
-      m.setMatrixAt(i, d.matrix)
-    }
-    m.instanceMatrix.needsUpdate = true
-  }, [])
-  return (
-    <instancedMesh ref={ref} args={[undefined, undefined, 70]}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color="#0a1424" emissive="#14384a" emissiveIntensity={0.35} metalness={0.4} roughness={0.5} />
-    </instancedMesh>
   )
 }
 
@@ -238,31 +217,6 @@ function DataGlyph({ index }: { index: number }) {
   )
 }
 
-function Portal() {
-  const glow = useRef<THREE.MeshBasicMaterial>(null)
-  useFrame((state) => {
-    if (glow.current) glow.current.opacity = 0.16 + Math.abs(Math.sin(state.clock.elapsedTime * 2)) * 0.12
-  })
-  return (
-    <group position={[0, 20, -55]}>
-      <mesh>
-        <torusGeometry args={[4.6, 0.5, 12, 64]} />
-        <meshStandardMaterial color="#12303f" emissive="#7FF3FF" emissiveIntensity={1.3} metalness={0.3} roughness={0.3} />
-      </mesh>
-      <mesh>
-        <circleGeometry args={[4.3, 48]} />
-        <meshBasicMaterial ref={glow} color="#bff4ff" transparent opacity={0.2} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-      {[-5.4, 5.4].map((x) => (
-        <mesh key={x} position={[x, -10.5, 0]}>
-          <cylinderGeometry args={[0.3, 0.4, 21, 8]} />
-          <meshStandardMaterial color="#0d1d2e" emissive={ACCENT} emissiveIntensity={0.3} metalness={0.5} roughness={0.4} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
 export function AICity({ projects, selectedId, onSelect }: CitySceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const towers = useMemo(() => projects.map((p, i) => makeTowerDNA(p, i, projects.length)), [projects])
@@ -302,14 +256,14 @@ export function AICity({ projects, selectedId, onSelect }: CitySceneProps) {
         />
       ))}
       {tops.length > 0 && <NeuralLinks points={tops} />}
-      <FillerSkyline />
+      <SharedSkyline palette={CITIES.AI.palette} count={70} seed="ai" />
       {Array.from({ length: 8 }, (_, i) => (
         <Platform key={i} index={i} />
       ))}
       {Array.from({ length: 5 }, (_, i) => (
         <DataGlyph key={i} index={i} />
       ))}
-      <Portal />
+
     </group>
   )
 }

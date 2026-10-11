@@ -1,19 +1,12 @@
+import { CITIES } from '../cityRegistry'
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Grid } from '@react-three/drei'
 import * as THREE from 'three'
 import type { CitySceneProps } from '../CityWorldModule'
-import { CityTower, CityLinks, FillerSkyline, PortalRing, makeTowerDNA, type CityPalette } from './cityKit'
+import { CityTower, CityLinks, FillerSkyline, makeTowerDNA } from './cityKit'
 
-const PALETTE: CityPalette = {
-  accent: '#FFD27A',
-  secondary: '#FFF8E8',
-  ground: '#0d0f1a',
-  gridCell: '#3a3512',
-  gridSection: '#6a5a1f',
-  body: '#1a1a20',
-  fillerEmissive: '#40381a',
-}
+const PALETTE = CITIES.Legend.palette
 
 /** Golden monument: obelisk, laurel rings, and a star topper. */
 function GoldenMonument() {
@@ -117,7 +110,6 @@ export function SuccessCity({ projects, selectedId, onSelect }: CitySceneProps) 
       ))}
       {tops.length > 0 && <CityLinks points={tops} accent={PALETTE.accent} targetY={13} />}
       <FillerSkyline palette={PALETTE} count={70} seed="sc" heightScale={1.7} />
-      <PortalRing accent={PALETTE.accent} />
       <pointLight position={[0, 32, 0]} intensity={1.6} distance={140} color={PALETTE.accent} />
     </group>
   )

@@ -1,3 +1,4 @@
+import { CITIES, isCityId } from '../cityRegistry'
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -32,11 +33,33 @@ export interface TowerDNA {
 }
 
 export function makeTowerDNA(project: Project, index: number, total: number, ring = 0): TowerDNA {
+  const layout = isCityId(project.category) ? CITIES[project.category].layout : CITIES.AI.layout
   const angle = (index / Math.max(total, 1)) * Math.PI * 2 + seeded(project.id, 0) * 0.6
-  const rad = 13 + ring + seeded(project.id, 1) * 15
-  const height = 5 + project.stage * 3.4 + seeded(project.id, 2) * 5
+  const rad = layout.radius + ring + seeded(project.id, 1) * 15
+  const height = (5 + project.stage * 3.4 + seeded(project.id, 2) * 5) * layout.heightScale
   const width = 2 + seeded(project.id, 3) * 1.8
-  return { pos: [Math.cos(angle) * rad, 0, Math.sin(angle) * rad], height, width, angle }
+  let x = Math.cos(angle) * rad, z = Math.sin(angle) * rad
+  if (layout.kind === 'grid' || layout.kind === 'boulevard') {
+    const side = index % 2 === 0 ? -1 : 1
+    const rows = Math.max(4, Math.ceil(Math.sqrt(total / 2)))
+    const columns = Math.max(1, Math.ceil(total / (rows * 2)))
+    const laneSpacing = Math.min(9, 40 / Math.max(columns - 1, 1))
+    const rowSpacing = Math.min(layout.kind === 'boulevard' ? 9 : 13, 80 / (rows - 1))
+    x = side * (layout.radius + Math.floor(index / (rows * 2)) * laneSpacing)
+    z = (Math.floor(index / 2) % rows - (rows - 1) / 2) * rowSpacing
+  } else if (layout.kind === 'arc') {
+    const a = -.9 + (index / Math.max(total - 1, 1)) * 1.8
+    x = Math.sin(a) * rad; z = -Math.cos(a) * rad
+  } else if (layout.kind === 'spiral') {
+    // Normalize a Fermat spiral to the walkable district, independent of count.
+    const spiralRadius = layout.radius + 48 * Math.sqrt(index / Math.max(total - 1, 1))
+    x = Math.cos(index * 2.4) * spiralRadius
+    z = Math.sin(index * 2.4) * spiralRadius
+  } else if (layout.kind === 'scatter') {
+    x = Math.cos(angle + seeded(project.id, 8)) * rad
+    z = Math.sin(angle) * rad * 1.3
+  }
+  return { pos: [x, 0, z], height, width, angle }
 }
 
 export type TowerCap = 'spire' | 'cube' | 'dome' | 'none'
@@ -87,7 +110,7 @@ export function CityTower({
   useFrame((state, delta) => {
     if (!group.current) return
     const t = hovered || selected ? 1.06 : 1
-    group.current.scale.lerp(new THREE.Vector3(t, t, t), delta * 6)
+    group.current.scale.setScalar(THREE.MathUtils.damp(group.current.scale.x, t, 6, delta))
     if (bodyMat.current) {
       if (status === 'decaying') {
         bodyMat.current.emissiveIntensity = baseGlow * (0.55 + Math.abs(Math.sin(state.clock.elapsedTime * 6 + dna.angle * 5)) * 0.6)
@@ -99,6 +122,7 @@ export function CityTower({
   return (
     <group
       ref={group}
+      userData={{projectId: project.id}}
       position={dna.pos}
       rotation={[0, 0, tilt]}
       onClick={(e: ThreeEvent<MouseEvent>) => {
@@ -211,6 +235,7 @@ export function CityLinks({ points, accent, targetY }: { points: THREE.Vector3[]
     g.setAttribute('position', new THREE.BufferAttribute(arr, 3))
     return g
   }, [points, targetY])
+  useEffect(() => () => geo.dispose(), [geo])
   useFrame((state) => {
     if (mat.current) mat.current.opacity = 0.16 + Math.abs(Math.sin(state.clock.elapsedTime * 1.6)) * 0.2
   })
@@ -234,6 +259,8 @@ export function FillerSkyline({
   heightScale?: number
 }) {
   const ref = useRef<THREE.InstancedMesh>(null)
+  const windows = useRef<THREE.InstancedMesh>(null)
+  const roofs = useRef<THREE.InstancedMesh>(null)
   useEffect(() => {
     const m = ref.current
     if (!m) return
@@ -242,44 +269,33 @@ export function FillerSkyline({
       const a = seeded(`${seed}${i}`, 1) * Math.PI * 2
       const rad = 30 + seeded(`${seed}${i}`, 2) * 42
       const h = (3 + seeded(`${seed}${i}`, 3) * 10) * heightScale
-      d.position.set(Math.cos(a) * rad, h / 2, Math.sin(a) * rad)
+      const x = Math.cos(a) * rad, z = Math.sin(a) * rad
+      // Reserve the approach avenue for streets, shelters and sidewalks.
+      d.position.set(Math.abs(x) < 12 && z > 14 ? (x < 0 ? -14 : 14) : x, h / 2, z)
       d.scale.set(1.6 + seeded(`${seed}${i}`, 4) * 1.6, h, 1.6 + seeded(`${seed}${i}`, 4) * 1.6)
       d.rotation.set(0, seeded(`${seed}${i}`, 5) * Math.PI, 0)
       d.updateMatrix()
       m.setMatrixAt(i, d.matrix)
+      const width = d.scale.x
+      for (let level = 0; level < 4; level++) {
+        d.scale.set(width * 1.025, .13, width * 1.025)
+        d.position.y = h * (.2 + level * .2); d.updateMatrix()
+        windows.current?.setMatrixAt(i * 4 + level, d.matrix)
+      }
+      d.position.y = h + .5; d.scale.set(width * .6, 1, width * .6); d.updateMatrix()
+      roofs.current?.setMatrixAt(i, d.matrix)
     }
     m.instanceMatrix.needsUpdate = true
+    if (windows.current) windows.current.instanceMatrix.needsUpdate = true
+    if (roofs.current) roofs.current.instanceMatrix.needsUpdate = true
   }, [count, seed, heightScale])
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, count]}>
+    <group name="district-skyline"><instancedMesh ref={ref} args={[undefined, undefined, count]}>
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial color={palette.body} emissive={palette.fillerEmissive} emissiveIntensity={0.35} metalness={0.4} roughness={0.5} />
     </instancedMesh>
-  )
-}
-
-/** The glowing portal the camera flies through during the intro. */
-export function PortalRing({ accent }: { accent: string }) {
-  const glow = useRef<THREE.MeshBasicMaterial>(null)
-  useFrame((state) => {
-    if (glow.current) glow.current.opacity = 0.16 + Math.abs(Math.sin(state.clock.elapsedTime * 2)) * 0.12
-  })
-  return (
-    <group position={[0, 20, -55]}>
-      <mesh>
-        <torusGeometry args={[4.6, 0.5, 12, 64]} />
-        <meshStandardMaterial color="#12303f" emissive={accent} emissiveIntensity={1.3} metalness={0.3} roughness={0.3} />
-      </mesh>
-      <mesh>
-        <circleGeometry args={[4.3, 48]} />
-        <meshBasicMaterial ref={glow} color={accent} transparent opacity={0.2} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-      {[-5.4, 5.4].map((x) => (
-        <mesh key={x} position={[x, -10.5, 0]}>
-          <cylinderGeometry args={[0.3, 0.4, 21, 8]} />
-          <meshStandardMaterial color="#0d1d2e" emissive={accent} emissiveIntensity={0.3} metalness={0.5} roughness={0.4} />
-        </mesh>
-      ))}
+    <instancedMesh ref={windows} args={[undefined,undefined,count*4]} frustumCulled={false}><boxGeometry /><meshBasicMaterial color={palette.accent} transparent opacity={seed.includes('grave') ? .12 : .45} /></instancedMesh>
+    <instancedMesh ref={roofs} args={[undefined,undefined,count]} frustumCulled={false}><boxGeometry /><meshStandardMaterial color={palette.body} metalness={.6} roughness={.3} /></instancedMesh>
     </group>
   )
 }

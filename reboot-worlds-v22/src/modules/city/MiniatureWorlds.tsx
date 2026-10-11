@@ -1859,7 +1859,7 @@ function HoloShards() {
   )
 }
 
-function WorldsScene({ projects }: { projects: CityProject[] }) {
+export function WorldsScene({ projects }: { projects: CityProject[] }) {
   const assembly = useRef<THREE.Group>(null)
 
   const revival = useMemo(() => {

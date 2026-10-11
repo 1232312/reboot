@@ -314,7 +314,7 @@ export function LifeParticles({ projects }: { projects: CityProject[] }) {
 
   return (
     <points ref={ref}>
-      <bufferGeometry>
+      <bufferGeometry key={positions.length}>
         <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
         <bufferAttribute attach="attributes-color" count={colors.length / 3} array={colors} itemSize={3} />
       </bufferGeometry>

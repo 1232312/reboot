@@ -1,19 +1,12 @@
+import { CITIES } from '../cityRegistry'
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Grid } from '@react-three/drei'
 import * as THREE from 'three'
 import type { CitySceneProps } from '../CityWorldModule'
-import { CityTower, CityLinks, FillerSkyline, PortalRing, makeTowerDNA, seeded, type CityPalette } from './cityKit'
+import { CityTower, CityLinks, FillerSkyline, makeTowerDNA, seeded } from './cityKit'
 
-const PALETTE: CityPalette = {
-  accent: '#FF4DD8',
-  secondary: '#4D8CFF',
-  ground: '#12081a',
-  gridCell: '#3a1250',
-  gridSection: '#6a2a8a',
-  body: '#1a1024',
-  fillerEmissive: '#3a1a50',
-}
+const PALETTE = CITIES.Creator.palette
 
 /** Nested animation-reel rings around a magenta core. */
 function StudioRings() {
@@ -114,7 +107,6 @@ export function CreatorCity({ projects, selectedId, onSelect }: CitySceneProps) 
       ))}
       {tops.length > 0 && <CityLinks points={tops} accent={PALETTE.accent} targetY={9} />}
       <FillerSkyline palette={PALETTE} count={55} seed="cs" />
-      <PortalRing accent={PALETTE.accent} />
       <pointLight position={[-18, 28, 12]} intensity={1.6} distance={120} color={PALETTE.secondary} />
     </group>
   )

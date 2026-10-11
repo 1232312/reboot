@@ -30,7 +30,7 @@ const PLANET_RADIUS = 60
  * Each district gets a wedge of the planet. Within each wedge,
  * buildings are arranged in concentric arcs.
  */
-function planPlanet(projects: Project[]): CityProject[] {
+export function planPlanet(projects: Project[]): CityProject[] {
   const districts = new Map<string, Project[]>()
   for (const p of projects) {
     const list = districts.get(p.category) ?? []
