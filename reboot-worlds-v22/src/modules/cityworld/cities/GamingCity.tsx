@@ -1,19 +1,12 @@
+import { CITIES } from '../cityRegistry'
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Grid } from '@react-three/drei'
 import * as THREE from 'three'
 import type { CitySceneProps } from '../CityWorldModule'
-import { CityTower, CityLinks, FillerSkyline, PortalRing, makeTowerDNA, seeded, type CityPalette } from './cityKit'
+import { CityTower, CityLinks, FillerSkyline, makeTowerDNA, seeded } from './cityKit'
 
-const PALETTE: CityPalette = {
-  accent: '#FFB547',
-  secondary: '#B44DFF',
-  ground: '#140d0a',
-  gridCell: '#4a3412',
-  gridSection: '#8a5a1f',
-  body: '#241726',
-  fillerEmissive: '#3a2450',
-}
+const PALETTE = CITIES.Gaming.palette
 
 /** Central hex arena with a floating trophy and pulsing ring. */
 function Arena() {
@@ -128,7 +121,6 @@ export function GamingCity({ projects, selectedId, onSelect }: CitySceneProps) {
       {Array.from({ length: 6 }, (_, i) => (
         <ScoreScreen key={i} index={i} />
       ))}
-      <PortalRing accent={PALETTE.accent} />
       <pointLight position={[0, 30, 0]} intensity={2} distance={130} color={PALETTE.secondary} />
     </group>
   )

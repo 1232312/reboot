@@ -1,19 +1,12 @@
+import { CITIES } from '../cityRegistry'
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Grid } from '@react-three/drei'
 import * as THREE from 'three'
 import type { CitySceneProps } from '../CityWorldModule'
-import { CityTower, FillerSkyline, PortalRing, makeTowerDNA, seeded, type CityPalette } from './cityKit'
+import { CityTower, FillerSkyline, makeTowerDNA, seeded } from './cityKit'
 
-const PALETTE: CityPalette = {
-  accent: '#FF5959',
-  secondary: '#7a4a4a',
-  ground: '#0a0808',
-  gridCell: '#2a1215',
-  gridSection: '#4a1a1a',
-  body: '#141014',
-  fillerEmissive: '#1a0e10',
-}
+const PALETTE = CITIES.Graveyard.palette
 
 /** Cracked fallen monument with scattered debris. */
 function BrokenMonument() {
@@ -131,7 +124,6 @@ export function GraveyardCity({ projects, selectedId, onSelect }: CitySceneProps
         <CityTower key={p.id} project={p} dna={towers[i]} palette={PALETTE} cap="none" hovered={hoveredId === p.id} selected={selectedId === p.id} onHover={setHoveredId} onSelect={onSelect} />
       ))}
       <FillerSkyline palette={PALETTE} count={50} seed="gy" />
-      <PortalRing accent={PALETTE.accent} />
       <pointLight position={[0, 12, 0]} intensity={1.1} distance={55} color={PALETTE.accent} />
     </group>
   )

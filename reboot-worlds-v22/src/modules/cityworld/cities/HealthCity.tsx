@@ -1,19 +1,12 @@
+import { CITIES } from '../cityRegistry'
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Grid } from '@react-three/drei'
 import * as THREE from 'three'
 import type { CitySceneProps } from '../CityWorldModule'
-import { CityTower, CityLinks, FillerSkyline, PortalRing, makeTowerDNA, type CityPalette } from './cityKit'
+import { CityTower, CityLinks, FillerSkyline, makeTowerDNA } from './cityKit'
 
-const PALETTE: CityPalette = {
-  accent: '#4DD8FF',
-  secondary: '#F8F8F8',
-  ground: '#0a1218',
-  gridCell: '#123a4a',
-  gridSection: '#1f6a8a',
-  body: '#dceef5',
-  fillerEmissive: '#14405a',
-}
+const PALETTE = CITIES.Health.palette
 
 /** Clean research spire with rotating halos and a hologram cross. */
 function ResearchSpire() {
@@ -105,7 +98,6 @@ export function HealthCity({ projects, selectedId, onSelect }: CitySceneProps) {
       ))}
       {tops.length > 0 && <CityLinks points={tops} accent={PALETTE.accent} targetY={13} />}
       <FillerSkyline palette={PALETTE} count={55} seed="hs" />
-      <PortalRing accent={PALETTE.accent} />
       <pointLight position={[0, 34, 0]} intensity={1.4} distance={140} color="#cfeef8" />
     </group>
   )

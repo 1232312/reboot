@@ -1,3 +1,5 @@
+import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
+import { BadgeGallery } from '@/components/BadgeGallery'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Globe2,
@@ -21,7 +23,7 @@ import {
   Boxes,
 } from 'lucide-react'
 import { useUI, type Mode, type SortFilter } from '@/stores/ui'
-import { CITY_CATEGORIES } from '@/modules/cityworld/cityRegistry'
+import { CITIES, isCityId } from '@/modules/cityworld/cityRegistry'
 import { useProjects } from '@/stores/auth'
 import { DISTRICTS, STATUS_BADGES, computeAwards, type ProjectStatus, type AwardType } from '@/types/project'
 import { cn } from '@/lib/utils'
@@ -29,7 +31,7 @@ import { useState, useMemo } from 'react'
 
 const MODES: { id: Mode; label: string; icon: typeof Globe2; desc: string }[] = [
   { id: 'city', label: 'World', icon: Globe2, desc: 'Explore the planet' },
-  { id: 'worlds', label: 'Worlds', icon: Boxes, desc: 'Five worlds inside' },
+  { id: 'worlds', label: 'Worlds', icon: Boxes, desc: 'Explore connected cities' },
   { id: 'network', label: 'Network', icon: Network, desc: 'See connections' },
   { id: 'graveyard', label: 'Graveyard', icon: Skull, desc: 'Visit the fallen' },
   { id: 'echo', label: 'Echo', icon: Sparkles, desc: 'Digital consciousness' },
@@ -48,12 +50,13 @@ const AWARD_ICONS: Record<AwardType, typeof Zap> = {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const mode = useUI((s) => s.mode)
+  const activeMode = mode === 'cityworld' ? 'city' : mode
   const setMode = useUI((s) => s.setMode)
   const selectProject = useUI((s) => s.selectProject)
   const projects = useProjects((s) => s.projects)
   const searchQuery = useUI((s) => s.searchQuery)
   const setSearchQuery = useUI((s) => s.setSearchQuery)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768)
   const statusFilter = useUI((s) => s.statusFilter)
   const setStatusFilter = useUI((s) => s.setStatusFilter)
   const sortFilter = useUI((s) => s.sortFilter)
@@ -62,7 +65,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setCategoryFilter = useUI((s) => s.setCategoryFilter)
   const cityCategory = useUI((s) => s.cityCategory)
   const enterCity = useUI((s) => s.enterCity)
-  const exitCity = useUI((s) => s.exitCity)
+  const travelling = useUI(s => s.travelPhase !== 'idle')
+  const [creating, setCreating] = useState(false)
+  const [badgesOpen, setBadgesOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
 
   const filtered = searchQuery
@@ -163,8 +168,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <button
                       key={p.id}
                       onClick={() => {
-                        selectProject(p.id)
                         setMode('city')
+                        selectProject(p.id)
                         setSearchQuery('')
                       }}
                       className="w-full text-left px-md py-2 hover:bg-primary/10 transition-colors border-b border-border/20 last:border-0"
@@ -184,14 +189,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               {DISTRICTS.map((d) => {
                 const isActive = categoryFilter === d.id
+                const color = isCityId(d.id) ? CITIES[d.id].palette.accent : d.theme.color
                 const count = districtCounts.get(d.id) ?? 0
                 return (
                   <button
                     key={d.id}
+                    disabled={travelling}
+                    aria-pressed={isActive}
                     onClick={() => {
-                  if (CITY_CATEGORIES.includes(d.id)) {
-                    if (mode === 'cityworld' && cityCategory === d.id) exitCity()
-                    else enterCity(d.id)
+                  if (isCityId(d.id)) {
+                    enterCity(d.id)
+                    if (window.innerWidth < 768) setSidebarOpen(false)
                     return
                   }
                   setCategoryFilter(isActive ? null : d.id)
@@ -202,25 +210,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         ? 'text-text bg-card/80 border border-border/60'
                         : 'text-text-secondary hover:text-text hover:bg-card/40 border border-transparent',
                     )}
-                    style={isActive ? { boxShadow: `0 0 12px ${d.theme.color}15` } : undefined}
+                    style={isActive ? { boxShadow: `0 0 12px ${color}15` } : undefined}
                   >
                     {/* Biome color indicator — now a small geometric shape */}
                     <span
                       className="w-2 h-2 transition-all duration-300 shrink-0"
                       style={{
-                        backgroundColor: d.theme.color,
-                        boxShadow: isActive ? `0 0 10px ${d.theme.color}` : `0 0 4px ${d.theme.color}80`,
+                        backgroundColor: color,
+                        boxShadow: isActive ? `0 0 10px ${color}` : `0 0 4px ${color}80`,
                         transform: isActive ? 'rotate(45deg)' : 'none',
                       }}
                     />
                     <div className="flex-1 text-left">
-                      <div className="font-medium">{d.shortName}</div>
+                      <div className="font-medium">{isCityId(d.id) ? CITIES[d.id].name : d.shortName}</div>
                       <div className="text-[9px] text-text-secondary/60 truncate">{d.description}</div>
                     </div>
                     {count > 0 && (
                       <span
                         className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0"
-                        style={{ color: d.theme.color, backgroundColor: `${d.theme.color}15` }}
+                        style={{ color: color, backgroundColor: `${color}15` }}
                       >
                         {count}
                       </span>
@@ -229,7 +237,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <motion.div
                         layoutId="district-active"
                         className="absolute left-0 top-0 bottom-0 w-0.5"
-                        style={{ backgroundColor: d.theme.color }}
+                        style={{ backgroundColor: color }}
                       />
                     )}
                   </button>
@@ -287,9 +295,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <button
                   key={m.id}
                   onClick={() => setMode(m.id)}
+                  aria-label={m.label}
                   className={cn(
                     'flex items-center gap-1.5 px-md py-1.5 rounded-lg text-xs font-medium transition-all duration-300 relative group',
-                    mode === m.id
+                    activeMode === m.id
                       ? 'bg-primary/15 text-primary'
                       : 'text-text-secondary hover:text-text hover:bg-card/60',
                   )}
@@ -297,7 +306,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <m.icon size={14} />
                   <span className="hidden sm:inline">{m.label}</span>
-                  {mode === m.id && (
+                  {activeMode === m.id && (
                     <motion.div
                       layoutId="mode-active"
                       className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary"
@@ -387,7 +396,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="relative flex-1 min-h-0 overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
-              key={mode}
+              key={['city', 'cityworld', 'worlds'].includes(mode) ? 'world-system' : mode}
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.02 }}
@@ -398,8 +407,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </motion.div>
           </AnimatePresence>
 
+          {creating && <CreateProjectDialog onClose={() => setCreating(false)} />}
+          {badgesOpen && <BadgeGallery onClose={() => setBadgesOpen(false)} />}
+          <button className="badge-gallery-trigger" onClick={event => { event.currentTarget.focus(); setBadgesOpen(true) }}><Award size={16} /> Badges</button>
           {/* Floating initialize button */}
           <motion.button
+            onClick={event => { event.currentTarget.focus(); setCreating(true) }}
+            disabled={travelling}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.5, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}

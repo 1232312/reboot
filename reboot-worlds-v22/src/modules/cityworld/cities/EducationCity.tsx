@@ -1,19 +1,12 @@
+import { CITIES } from '../cityRegistry'
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Grid } from '@react-three/drei'
 import * as THREE from 'three'
 import type { CitySceneProps } from '../CityWorldModule'
-import { CityTower, CityLinks, FillerSkyline, PortalRing, makeTowerDNA, seeded, type CityPalette } from './cityKit'
+import { CityTower, CityLinks, FillerSkyline, makeTowerDNA, seeded } from './cityKit'
 
-const PALETTE: CityPalette = {
-  accent: '#3BFF91',
-  secondary: '#2BE8C8',
-  ground: '#081410',
-  gridCell: '#12402a',
-  gridSection: '#1f8a5a',
-  body: '#0a2018',
-  fillerEmissive: '#14402a',
-}
+const PALETTE = CITIES.Education.palette
 
 /** The Great Library — a stepped ziggurat with glowing seams and a beacon. */
 function LibraryZiggurat() {
@@ -145,7 +138,6 @@ export function EducationCity({ projects, selectedId, onSelect }: CitySceneProps
       {Array.from({ length: 8 }, (_, i) => (
         <InfoDisplay key={i} index={i} />
       ))}
-      <PortalRing accent={PALETTE.accent} />
       <pointLight position={[-20, 26, -10]} intensity={1.6} distance={120} color={PALETTE.secondary} />
     </group>
   )

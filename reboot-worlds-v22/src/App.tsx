@@ -7,11 +7,9 @@ import { LandingSkyline } from '@/components/landing/LandingSkyline'
 import { AuthPage } from '@/components/auth/AuthPage'
 import { AppShell } from '@/components/shell/AppShell'
 
-const CityModule = lazy(() => import('@/modules/city/CityModule').then((m) => ({ default: m.CityModule })))
 const EchoModule = lazy(() => import('@/modules/echo/EchoModule').then((m) => ({ default: m.EchoModule })))
 const GraveyardModule = lazy(() => import('@/modules/graveyard/GraveyardModule').then((m) => ({ default: m.GraveyardModule })))
 const NetworkModule = lazy(() => import('@/modules/network/NetworkModule').then((m) => ({ default: m.NetworkModule })))
-const MiniatureWorldsModule = lazy(() => import('@/modules/city/MiniatureWorlds').then((m) => ({ default: m.MiniatureWorldsModule })))
 const CityWorldModule = lazy(() => import('@/modules/cityworld/CityWorldModule').then((m) => ({ default: m.CityWorldModule })))
 
 function ModuleLoader() {
@@ -54,9 +52,7 @@ export default function App() {
   return (
     <AppShell>
       <Suspense fallback={<ModuleLoader />}>
-        {mode === 'city' && <CityModule />}
-        {mode === 'cityworld' && <CityWorldModule />}
-        {mode === 'worlds' && <MiniatureWorldsModule />}
+        {(mode === 'city' || mode === 'cityworld' || mode === 'worlds') && <CityWorldModule />}
         {mode === 'echo' && <EchoModule />}
         {mode === 'graveyard' && <GraveyardModule />}
         {mode === 'network' && <NetworkModule />}

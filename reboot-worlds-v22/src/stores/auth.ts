@@ -194,19 +194,24 @@ export const useProjects = create<ProjectDataState>((set, get) => ({
   },
 
   async createProject(input) {
-    const { data, error } = await supabase
-      .from('projects')
-      .insert(rowToInsert(input))
-      .select('*')
-      .single<ProjectRow>()
-
-    if (error) {
-      set({ error: error.message })
+    const owner = useAuth.getState().user
+    if (!owner) { set({ error: 'Sign in to create a project.' }); return null }
+    set({ error: null })
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({ ...rowToInsert(input), firebase_uid: owner.uid })
+        .select('*')
+        .abortSignal(AbortSignal.timeout(20000))
+        .single<ProjectRow>()
+      if (error) { set({ error: error.message }); return null }
+      const project = rowToProject(data)
+      set(state => ({ projects: [project, ...state.projects.filter(p => p.id !== project.id)] }))
+      return project
+    } catch {
+      set({ error: 'Could not save your project. Check your connection and try again.' })
       return null
     }
-    const project = rowToProject(data)
-    set({ projects: [project, ...get().projects] })
-    return project
   },
 
   async updateProject(id, patch) {

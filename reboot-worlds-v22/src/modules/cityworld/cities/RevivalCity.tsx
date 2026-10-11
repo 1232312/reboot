@@ -1,19 +1,12 @@
+import { CITIES } from '../cityRegistry'
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Grid } from '@react-three/drei'
 import * as THREE from 'three'
 import type { CitySceneProps } from '../CityWorldModule'
-import { CityTower, CityLinks, FillerSkyline, PortalRing, makeTowerDNA, seeded, type CityPalette } from './cityKit'
+import { CityTower, CityLinks, FillerSkyline, makeTowerDNA, seeded } from './cityKit'
 
-const PALETTE: CityPalette = {
-  accent: '#FFB547',
-  secondary: '#3BFF91',
-  ground: '#0d0f0a',
-  gridCell: '#3a3a12',
-  gridSection: '#6a5a1f',
-  body: '#1a1a14',
-  fillerEmissive: '#3a3a1a',
-}
+const PALETTE = CITIES.IdeaHub.palette
 
 /** Construction drones circling the rebuild sites. */
 function Drone({ index }: { index: number }) {
@@ -144,7 +137,6 @@ export function RevivalCity({ projects, selectedId, onSelect }: CitySceneProps) 
       ))}
       {tops.length > 0 && <CityLinks points={tops} accent={PALETTE.secondary} targetY={9} />}
       <FillerSkyline palette={PALETTE} count={55} seed="rv" />
-      <PortalRing accent={PALETTE.accent} />
     </group>
   )
 }

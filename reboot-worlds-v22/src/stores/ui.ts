@@ -4,6 +4,7 @@
  * separate from auth/project data so modules stay decoupled.
  */
 import { create } from 'zustand'
+import { isCityId } from '@/modules/cityworld/cityRegistry'
 import type { ProjectCategory, ProjectStatus } from '@/types/project'
 
 export type Mode = 'boot' | 'landing' | 'auth' | 'city' | 'network' | 'graveyard' | 'echo' | 'worlds' | 'cityworld'
@@ -22,7 +23,15 @@ export interface BuildingCustomization {
   glowIntensity: number
 }
 
+export type TravelPhase = 'idle' | 'loading' | 'departing' | 'crossing' | 'arriving'
+
 interface UIState {
+  travelPhase: TravelPhase
+  destination: ProjectCategory | null
+  travelId: number
+  travelError: string | null
+  advanceTravel: (id: number, phase: TravelPhase) => void
+  cancelTravel: (error?: string) => void
   mode: Mode
   selectedProjectId: string | null
   categoryFilter: ProjectCategory | null
@@ -49,7 +58,7 @@ interface UIState {
   updateCustomization: (id: string, patch: Partial<BuildingCustomization>) => void
 }
 
-export const useUI = create<UIState>((set) => ({
+export const useUI = create<UIState>((set, get) => ({
   mode: 'boot',
   selectedProjectId: null,
   categoryFilter: null,
@@ -60,10 +69,44 @@ export const useUI = create<UIState>((set) => ({
   tutorialSeen: false,
   customizingProjectId: null,
   customizations: {},
-  setMode: (mode) => set({ mode }),
+  travelPhase: 'idle',
+  destination: null,
+  travelId: 0,
+  travelError: null,
+  setMode: (mode) => {
+    if (mode === 'city' && get().mode === 'cityworld') {
+      if (get().travelPhase !== 'idle') get().cancelTravel()
+      get().exitCity(); return
+    }
+    const current = get()
+    set({ mode, travelPhase: 'idle', travelError: null, travelId: current.travelId + 1,
+      ...(current.travelPhase !== 'idle' ? { destination: current.cityCategory, categoryFilter: current.cityCategory } : {}),
+      ...(mode === 'city' || mode === 'worlds' ? {cityCategory: null, categoryFilter: null, destination: null} : {}) })
+  },
+  advanceTravel: (id, phase) => set(s => {
+    const next: Record<TravelPhase, TravelPhase> = { idle: 'loading', loading: 'departing', departing: 'crossing', crossing: 'arriving', arriving: 'idle' }
+    if (s.travelId !== id || next[s.travelPhase] !== phase) return s
+    return { travelPhase: phase, ...(phase === 'crossing' ? {
+      cityCategory: s.destination, categoryFilter: s.destination,
+      mode: s.destination ? 'cityworld' as const : 'city' as const,
+    } : {}) }
+  }),
+  cancelTravel: (error) => set(s => ({ travelPhase: 'idle', travelId: s.travelId + 1,
+    destination: s.cityCategory, categoryFilter: s.cityCategory, travelError: error ?? null })),
   cityCategory: null,
-  enterCity: (category) => set({ cityCategory: category, categoryFilter: category, mode: 'cityworld', selectedProjectId: null }),
-  exitCity: () => set({ mode: 'city', cityCategory: null, categoryFilter: null }),
+  enterCity: (category) => {
+    const s = get()
+    if (s.travelPhase !== 'idle' || !isCityId(category) || (s.mode === 'cityworld' && s.cityCategory === category)) return
+    set({ destination: category, categoryFilter: category, travelPhase: 'loading', travelId: s.travelId + 1,
+      travelError: null, selectedProjectId: null,
+      ...(!['city', 'cityworld', 'worlds'].includes(s.mode) ? {mode: 'city' as const, cityCategory: null} : {}) })
+  },
+  exitCity: () => {
+    const s = get()
+    if (s.travelPhase !== 'idle' || !s.cityCategory) return
+    set({ destination: null, categoryFilter: null, travelPhase: 'loading', travelId: s.travelId + 1,
+      travelError: null, selectedProjectId: null })
+  },
   selectProject: (id) => set({ selectedProjectId: id }),
   setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
   setStatusFilter: (statusFilter) => set({ statusFilter }),
